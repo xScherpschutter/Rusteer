@@ -17,8 +17,8 @@
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/xScherpschutter/rusteer.git
-   cd rusteer
+   git clone https://github.com/xScherpschutter/Rusteer.git
+   cd Rusteer
    ```
 
 2. Build the project:
