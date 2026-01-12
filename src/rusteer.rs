@@ -1,4 +1,4 @@
-//! Unified Deezloader interface.
+//! Unified Rusteer interface.
 //!
 //! This module provides a high-level, easy-to-use interface for
 //! downloading music and fetching metadata from Deezer.
@@ -90,19 +90,19 @@ impl BatchDownloadResult {
     }
 }
 
-/// Main Deezloader interface.
+/// Main Rusteer interface.
 ///
 /// Provides a unified API for downloading music and fetching metadata.
 ///
 /// # Example
 ///
 /// ```rust,no_run
-/// use deezloader_rust::Deezloader;
+/// use rusteer::Rusteer;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     // Create instance with ARL token
-///     let dz = Deezloader::new("your_arl_token").await?;
+///     let dz = Rusteer::new("your_arl_token").await?;
 ///
 ///     // Download a track
 ///     let result = dz.download_track("3135556", ".").await?;
@@ -116,7 +116,7 @@ impl BatchDownloadResult {
 /// }
 /// ```
 #[derive(Debug)]
-pub struct Deezloader {
+pub struct Rusteer {
     public_api: DeezerApi,
     gateway_api: GatewayApi,
     preferred_quality: DownloadQuality,
@@ -126,8 +126,8 @@ pub struct Deezloader {
     output_dir: PathBuf,
 }
 
-impl Deezloader {
-    /// Create a new Deezloader instance.
+impl Rusteer {
+    /// Create a new Rusteer instance.
     ///
     /// Requires a valid ARL token from a logged-in Deezer session.
     ///

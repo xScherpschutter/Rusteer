@@ -1,25 +1,25 @@
-//! # Deezloader Rust
+//! # Rusteer
 //!
 //! A Rust library for downloading music and fetching metadata from Deezer.
 //!
 //! ## Quick Start
 //!
-//! The easiest way to use this library is through the [`Deezloader`] struct:
+//! The easiest way to use this library is through the [`Rusteer`] struct:
 //!
 //! ```rust,no_run
-//! use deezloader_rust::Deezloader;
+//! use rusteer::Rusteer;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     // Create instance with ARL token
-//!     let dz = Deezloader::new("your_arl_token").await?;
+//!     let dz = Rusteer::new("your_arl_token").await?;
 //!
 //!     // Download a single track
-//!     let result = dz.download_track("3135556", ".").await?;
+//!     let result = dz.download_track("3135556").await?;
 //!     println!("Downloaded: {}", result.path.display());
 //!
 //!     // Download an entire album
-//!     let album_result = dz.download_album("302127", ".").await?;
+//!     let album_result = dz.download_album("302127").await?;
 //!     println!("Downloaded {} tracks", album_result.successful.len());
 //!
 //!     // Get metadata only
@@ -48,13 +48,13 @@
 pub mod api;
 pub mod converters;
 pub mod crypto;
-mod deezloader;
 pub mod error;
 pub mod models;
+mod rusteer;
 pub mod tagging;
 
 // Main interface (recommended)
-pub use deezloader::{BatchDownloadResult, Deezloader, DownloadQuality, DownloadResult};
+pub use rusteer::{BatchDownloadResult, DownloadQuality, DownloadResult, Rusteer};
 
 // Low-level APIs
 pub use api::{DeezerApi, GatewayApi};

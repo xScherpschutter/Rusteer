@@ -47,7 +47,7 @@ const CLIENT_SECRET: &str = "fb0bec7ccc063dab0417eb7b0d847f34";
 /// # Example
 ///
 /// ```rust,no_run
-/// use deezloader_rust::GatewayApi;
+/// use Rusteer::GatewayApi;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {

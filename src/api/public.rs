@@ -26,7 +26,7 @@ const COVER_URL_TEMPLATE: &str =
 /// # Example
 ///
 /// ```rust,no_run
-/// use deezloader_rust::DeezerApi;
+/// use Rusteer::DeezerApi;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
