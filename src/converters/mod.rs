@@ -1,9 +1,8 @@
 //! JSON to model converters.
 //!
 //! This module provides functions to convert raw Deezer API JSON responses
-//! into typed model structures. Mirrors the functionality in Python's
-//! `__dee_api__.py`.
-
+//! into typed model structures.
+//! 
 use serde_json::Value;
 
 use crate::error::{DeezerError, Result};
