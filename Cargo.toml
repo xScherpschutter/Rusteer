@@ -34,6 +34,7 @@ tracing = "0.1"
 
 # Audio metadata tagging
 lofty = "0.22"
+clap = { version = "4.4", features = ["derive", "env"] }
 
 [dev-dependencies]
 tokio-test = "0.4"
