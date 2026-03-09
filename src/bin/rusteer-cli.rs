@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use rusteer::{DownloadQuality, Rusteer};
 use std::path::PathBuf;
 
+// Update to add Stream enum command
 #[derive(Parser)]
 #[command(name = "rusteer-cli")]
 #[command(about = "CLI for Rusteer - Deezer Downloader", long_about = None)]
@@ -50,6 +51,11 @@ enum Commands {
         #[arg(short, long)]
         r#type: Option<ContentType>,
     },
+    /// Stream a track and save it chunk by chunk (testing)
+    Stream {
+        /// ID of the track to stream
+        id: String,
+    },
     /// Search for content
     Search {
         /// Search query
@@ -84,7 +90,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Initialize Rusteer
     let mut rusteer = Rusteer::new(&cli.arl).await?;
-    rusteer.set_output_dir(cli.output);
+    rusteer.set_output_dir(cli.output.clone());
     rusteer.set_quality(cli.quality.into());
 
     match &cli.command {
@@ -127,14 +133,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             match content_type {
                 ContentType::Track => {
                     let result = rusteer.download_track(id).await?;
-                    println!("✅ Downloaded: {}", result.title);
-                    println!("   Path: {}", result.path.display());
+                    println!("Downloaded: {}", result.title);
+                    println!("Path: {}", result.path.display());
                 }
                 ContentType::Album => {
                     let result = rusteer.download_album(id).await?;
-                    println!("✅ Album downloaded to: {}", result.directory.display());
+                    println!("Album downloaded to: {}", result.directory.display());
                     println!(
-                        "   Successful: {}/{}",
+                        "Successful: {}/{}",
                         result.successful.len(),
                         result.total()
                     );
@@ -147,9 +153,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 ContentType::Playlist => {
                     let result = rusteer.download_playlist(id).await?;
-                    println!("✅ Playlist downloaded to: {}", result.directory.display());
+                    println!("Playlist downloaded to: {}", result.directory.display());
                     println!(
-                        "   Successful: {}/{}",
+                        "Successful: {}/{}",
                         result.successful.len(),
                         result.total()
                     );
@@ -161,6 +167,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
             }
+        }
+        Commands::Stream { id } => {
+            println!("Streaming track {}...", id);
+
+            let mut result = rusteer.stream_track(id).await?;
+            println!(
+                "Streaming started for: {} by {}",
+                result.title, result.artist
+            );
+
+            // For testing, we will just pipe it to an output file
+            let extension = result.quality.extension();
+            let safe_title = result
+                .title
+                .replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], "_");
+            let file_path = cli
+                .output
+                .join(format!("stream_{}{}", safe_title, extension));
+
+            std::fs::create_dir_all(&cli.output)?;
+            let mut file = tokio::fs::File::create(&file_path).await?;
+
+            println!("   Writing stream to: {}", file_path.display());
+            tokio::io::copy(&mut result.stream, &mut file).await?;
+            println!("   Stream completed successfully!");
         }
         Commands::Search {
             query,

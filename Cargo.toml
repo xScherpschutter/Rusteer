@@ -7,7 +7,7 @@ license = "MIT"
 
 [dependencies]
 # HTTP client with cookie support
-reqwest = { version = "0.12", features = ["json", "cookies"] }
+reqwest = { version = "0.12", features = ["json", "cookies", "stream"] }
 
 # Async runtime
 tokio = { version = "1", features = ["full"] }
@@ -35,6 +35,8 @@ tracing = "0.1"
 # Audio metadata tagging
 lofty = "0.22"
 clap = { version = "4.4", features = ["derive", "env"] }
+futures-util = "0.3.32"
+bytes = "1.11.1"
 
 [dev-dependencies]
 tokio-test = "0.4"

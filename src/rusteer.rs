@@ -67,6 +67,29 @@ pub struct DownloadResult {
     pub artist: String,
 }
 
+/// Result of a single streaming track download.
+pub struct StreamingResult {
+    /// Quality that was actually used.
+    pub quality: DownloadQuality,
+    /// Track title.
+    pub title: String,
+    /// Artist name.
+    pub artist: String,
+    /// The stream reader to consume the decrypted audio bytes.
+    pub stream: tokio::io::ReadHalf<tokio::io::DuplexStream>,
+}
+
+impl std::fmt::Debug for StreamingResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StreamingResult")
+            .field("quality", &self.quality)
+            .field("title", &self.title)
+            .field("artist", &self.artist)
+            .field("stream", &"<Opaque AsyncRead>")
+            .finish()
+    }
+}
+
 /// Result of a batch download (album/playlist).
 #[derive(Debug)]
 pub struct BatchDownloadResult {
@@ -240,6 +263,110 @@ impl Rusteer {
     pub async fn download_track(&self, track_id: &str) -> Result<DownloadResult> {
         self.download_track_to(track_id, &self.output_dir.clone())
             .await
+    }
+
+    /// Stream a track's audio bytes over a Tokio AsyncRead stream.
+    ///
+    /// The decryption happens on-the-fly, allowing immediate playback.
+    /// This bypasses embedding metadata tags on the file.
+    pub async fn stream_track(&self, track_id: &str) -> Result<StreamingResult> {
+        // Get track metadata
+        let track = self.public_api.get_track(track_id).await?;
+        let artist = track.artists_string(", ");
+        let title = track.title.clone();
+
+        // Get song data from gateway
+        let song_data = self.gateway_api.get_song_data(track_id).await?;
+
+        if !song_data.readable {
+            return Err(DeezerError::TrackNotFound(format!(
+                "Track {} is not readable",
+                track_id
+            )));
+        }
+
+        let track_token = song_data
+            .track_token
+            .ok_or_else(|| DeezerError::NoDataApi("No track token".to_string()))?;
+
+        // Find available quality
+        let (media_url, quality) = self.find_media_url(&track_token).await?;
+
+        // Open up a channel that we can pipe bytes into
+        let (mut tx, rx) = tokio::io::duplex(1024 * 1024); // 1 MB buffer
+
+        // Spawn a background task to drive the chunks download and decrypting them on the fly
+        let client = reqwest::Client::new();
+        let track_id_cloned = track_id.to_string();
+
+        tokio::spawn(async move {
+            let res = match client.get(&media_url.url).send().await {
+                Ok(r) => r,
+                Err(e) => {
+                    tracing::error!("Failed to request HTTP stream: {:?}", e);
+                    return;
+                }
+            };
+
+            use futures_util::StreamExt;
+            use tokio::io::AsyncWriteExt;
+            let mut byte_stream = res.bytes_stream();
+
+            let key = crypto::calc_blowfish_key(&track_id_cloned);
+
+            // We need exactly 2048 bytes blocks for standard decryption
+            let mut buffer = Vec::new();
+            let mut block_count = 0;
+
+            while let Some(chunk_res) = byte_stream.next().await {
+                match chunk_res {
+                    Ok(bytes) => {
+                        buffer.extend_from_slice(&bytes);
+
+                        // Process available blocks
+                        while buffer.len() >= 2048 {
+                            let block: Vec<u8> = buffer.drain(..2048).collect();
+
+                            let processed = if block_count % 3 == 0 {
+                                crypto::decrypt_blowfish_chunk(&block, &key)
+                            } else {
+                                block
+                            };
+
+                            if tx.write_all(&processed).await.is_err() {
+                                // Reader dropped the connection
+                                return;
+                            }
+
+                            block_count += 1;
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!("Error reading chunk from stream: {:?}", e);
+                        return;
+                    }
+                }
+            }
+
+            // Push remaining bytes
+            if !buffer.is_empty() {
+                if tx.write_all(&buffer).await.is_err() {
+                    return;
+                }
+            }
+
+            let _ = tx.flush().await;
+        });
+
+        // We wrap the read half side of the channel to the user
+        let (reader, _writer) = tokio::io::split(rx);
+
+        Ok(StreamingResult {
+            quality,
+            title,
+            artist,
+            stream: reader,
+        })
     }
 
     /// Download an entire album to the default output directory.
